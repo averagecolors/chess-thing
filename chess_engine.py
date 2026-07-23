@@ -1,0 +1,86 @@
+import chess
+import numpy as np
+from typing import List, Tuple, Optional
+
+class ChessEngine:
+    """Chess engine for managing game state and move generation."""
+    
+    def __init__(self):
+        self.board = chess.Board()
+    
+    def reset(self) -> None:
+        """Reset the board to the starting position."""
+        self.board = chess.Board()
+    
+    def get_legal_moves(self) -> List[chess.Move]:
+        """Get all legal moves in the current position."""
+        return list(self.board.legal_moves)
+    
+    def make_move(self, move: chess.Move) -> bool:
+        """Make a move on the board. Returns True if move was legal."""
+        if move in self.board.legal_moves:
+            self.board.push(move)
+            return True
+        return False
+    
+    def is_game_over(self) -> bool:
+        """Check if the game is over."""
+        return self.board.is_game_over()
+    
+    def get_result(self) -> Optional[float]:
+        """Get game result: 1.0 for white win, 0.5 for draw, 0.0 for black win."""
+        if not self.is_game_over():
+            return None
+        
+        result = self.board.result()
+        if result == '1-0':  # White wins
+            return 1.0
+        elif result == '0-1':  # Black wins
+            return 0.0
+        else:  # Draw
+            return 0.5
+    
+    def board_to_tensor(self) -> np.ndarray:
+        """Convert board state to a tensor representation.
+        
+        Returns a 8x8x12 tensor where each square has 12 channels:
+        - 6 channels for white pieces (pawn, knight, bishop, rook, queen, king)
+        - 6 channels for black pieces
+        """
+        tensor = np.zeros((8, 8, 12), dtype=np.float32)
+        
+        piece_to_idx = {
+            chess.PAWN: 0,
+            chess.KNIGHT: 1,
+            chess.BISHOP: 2,
+            chess.ROOK: 3,
+            chess.QUEEN: 4,
+            chess.KING: 5
+        }
+        
+        for square in chess.SQUARES:
+            piece = self.board.piece_at(square)
+            if piece is not None:
+                rank, file = divmod(square, 8)
+                piece_type_idx = piece_to_idx[piece.piece_type]
+                
+                if piece.color == chess.WHITE:
+                    channel = piece_type_idx
+                else:
+                    channel = piece_type_idx + 6
+                
+                tensor[rank, file, channel] = 1.0
+        
+        return tensor
+    
+    def is_white_to_move(self) -> bool:
+        """Return True if it's white's turn."""
+        return self.board.turn
+    
+    def get_fen(self) -> str:
+        """Get FEN notation of current position."""
+        return self.board.fen()
+    
+    def get_move_count(self) -> int:
+        """Get the number of moves made so far."""
+        return self.board.fullmove_number
